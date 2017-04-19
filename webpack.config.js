@@ -5,13 +5,33 @@ var HtmlWebpackPlugin = require('html-webpack-plugin');
 var autoprefixer = require('autoprefixer');
 
 var TARGET = process.env.npm_lifecycle_event;
-var cssCommonLoader = "style!css?sourceMap!postcss!";
+var isCSSMinimize = TARGET === 'deploy';
 
-if(TARGET === 'deploy') {
-	cssCommonLoader = "style!css?sourceMap&minimize!postcss!";
-}
+var cssCommonUse = [
+	{
+		loader: "style-loader"
+	},
+	{
+		loader: "css-loader",
+		options: {
+			sourceMap: true,
+			importLoaders: 1,
+			minimize: isCSSMinimize
+		}
+	},
+	{
+		loader: "postcss-loader",
+		options: {
+      plugins: function () {
+        return [autoprefixer]
+      }
+    }
+	},
+];
+
 
 var UglifyJsPlugin = new webpack.optimize.UglifyJsPlugin({
+		sourceMap: true,
     minimize: true,
     output: {
         comments: false
@@ -30,40 +50,51 @@ var common = {
 		filename: "./bundle.js"
 	},
 	resolve: {
-  		extensions: ['', '.js', '.jsx']
+  		extensions: [".js", ".jsx", ".json"]
 	},
 	module: {
-		loaders: [
-		  /* set up jsx */
-		  {
-		    test: /\.jsx?$/,
-		    exclude: /node_modules/,
-		    loaders: ['babel']
-		  },
-		   //less
+		rules: [
 			{
-			    test: /\.less$/,
-			    loader: cssCommonLoader+'less?sourceMap'
-			},
-			//sass
+				test: /\.jsx?$/,
+			  exclude: /node_modules/,
+				use: [
+					"babel-loader"
+				]
+			}, 
+			{
+				test: /\.less$/,
+				use: [
+					{
+						loader: "less-loader",
+						options: {
+							sourceMap: true
+						}
+					}, 
+					...cssCommonUse
+				]
+			}, 
 			{
 				test: /\.scss$/,
-				loader: cssCommonLoader+'sass?sourceMap'
+				use: [
+					...cssCommonUse,
+					{
+						loader: "sass-loader",
+						options: {
+							sourceMap: true
+						}
+					}
+				]
 			},
 			{
 				test: /\.css$/,
-				loader: cssCommonLoader
+				use: cssCommonUse
 			},
-			//file
 			{
 				test: /\.(png|jpg|jpeg|gif)$/,
-				loader: 'file'
+				use: ["file-loader"]
 			}
 		]
 	},
-  postcss: function () {
-      return [autoprefixer];
-  },
 	plugins: [
 		new HtmlWebpackPlugin({
 			template: path.join(__dirname, 'example/index.html'),
